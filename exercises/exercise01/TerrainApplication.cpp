@@ -1,9 +1,13 @@
 #include "TerrainApplication.h"
 
-// (todo) 01.1: Include the libraries you need
+#include <ituGL/geometry/VertexAttribute.h>
 
 #include <cmath>
 #include <iostream>
+#include <vector>
+
+#define STB_PERLIN_IMPLEMENTATION
+#include <stb_perlin.h>
 
 // Helper structures. Declared here only for this exercise
 struct Vector2
@@ -27,11 +31,21 @@ struct Vector3
 };
 
 // (todo) 01.8: Declare an struct with the vertex format
+struct Vertex 
+{
+    Vector3 position;
+    Vector2 texCoord;
+    Vector3 color;
+    Vector3 normal;
+};
 
+
+
+Vector3 GetColorFromHeight(float height);
 
 
 TerrainApplication::TerrainApplication()
-    : Application(1024, 1024, "Terrain demo"), m_gridX(16), m_gridY(16), m_shaderProgram(0)
+    : Application(1024, 1024, "Terrain demo"), m_gridX(64), m_gridY(64), m_shaderProgram(0)
 {
 }
 
@@ -43,22 +57,138 @@ void TerrainApplication::Initialize()
     BuildShaders();
 
     // (todo) 01.1: Create containers for the vertex position
+    std::vector<Vertex> vertices;
 
+    std::vector<unsigned int> indices;
+
+    Vector2 scale(1.0 / m_gridX, 1.0 / m_gridY);
+
+    unsigned int columnCount = m_gridX + 1;
+    unsigned int rowCount = m_gridY + 1;
 
     // (todo) 01.1: Fill in vertex data
+    for (unsigned int j = 0u; j < rowCount; ++j)
+    {
+        for (unsigned int i = 0u; i < columnCount; ++i)
+        {
+            Vertex& vertex = vertices.emplace_back();
+            float x = i * scale.x - 0.5f;
+            float y = j * scale.y - 0.5f;
+            float z = stb_perlin_fbm_noise3(x * 2, y * 2, 0.0f, 1.9f, 0.5f, 8) * 0.5f;
 
+            vertex.position = Vector3(x, y, z);
+            vertex.texCoord = Vector2(i, j);
+            vertex.color = GetColorFromHeight(z);
+            vertex.normal = Vector3(0.0f, 0.0f, 1.0f);
+
+            if (i > 0 && j > 0)
+            {
+                unsigned int top_right = j * columnCount + i; // Current vertex
+                unsigned int top_left = top_right - 1;
+                unsigned int bottom_right = top_right - columnCount;
+                unsigned int bottom_left = bottom_right - 1;
+
+                //Triangle 1
+                indices.push_back(bottom_left);
+                indices.push_back(bottom_right);
+                indices.push_back(top_left);
+
+                //Triangle 2
+                indices.push_back(bottom_right);
+                indices.push_back(top_left);
+                indices.push_back(top_right);
+            }
+        }
+    }
+
+    for (unsigned int j = 0u; j < rowCount; ++j)
+    {
+        for (unsigned int i = 0u; i < columnCount; ++i)
+        {
+            // Get the vertex at (i, j)
+            unsigned int index = j * columnCount + i;
+            Vertex& vertex = vertices[index];
+
+            // Compute the delta in X
+            unsigned int prevX = i > 0 ? index - 1 : index;
+            unsigned int nextX = i < m_gridX ? index + 1 : index;
+            float deltaHeightX = vertices[nextX].position.z - vertices[prevX].position.z;
+            float deltaX = vertices[nextX].position.x - vertices[prevX].position.x;
+            float x = deltaHeightX / deltaX;
+
+            // Compute the delta in Y
+            int prevY = j > 0 ? index - columnCount : index;
+            int nextY = j < m_gridY ? index + columnCount : index;
+            float deltaHeightY = vertices[nextY].position.z - vertices[prevY].position.z;
+            float deltaY = vertices[nextY].position.y - vertices[prevY].position.y;
+            float y = deltaHeightY / deltaY;
+
+            // Compute the normal
+            vertex.normal = Vector3(x, y, 1.0f).Normalize();
+        }
+    }
 
     // (todo) 01.1: Initialize VAO, and VBO
+    m_vbo.Bind();
+    m_vbo.AllocateData(std::span(vertices));
+    m_vao.Bind();
 
+    VertexAttribute positionAttribute(Data::Type::Float, 3);
+    VertexAttribute texCoordAttribute(Data::Type::Float, 2);
+    VertexAttribute colorAttribute(Data::Type::Float, 3);
+    VertexAttribute normalAttribute(Data::Type::Float, 3);
+
+    // Offsets
+    float positionOffset = 0;
+    float texCoordOffset = positionOffset + positionAttribute.GetSize();
+    float colorOffset = texCoordOffset + texCoordAttribute.GetSize();
+    float normalOffset = colorOffset + colorAttribute.GetSize();
+
+    float stride = sizeof(Vertex);
+
+    m_vao.SetAttribute(0, positionAttribute, positionOffset, stride);
+    m_vao.SetAttribute(1, texCoordAttribute, texCoordOffset, stride);
+    m_vao.SetAttribute(2, colorAttribute, colorOffset, stride);
+    m_vao.SetAttribute(3, normalAttribute, normalOffset, stride);
 
     // (todo) 01.5: Initialize EBO
-
+    m_ebo.Bind();
+    m_ebo.AllocateData<unsigned int>(std::span(indices));
 
     // (todo) 01.1: Unbind VAO, and VBO
-
-
     // (todo) 01.5: Unbind EBO
+    
+    m_vao.Unbind();
+    m_vbo.Unbind();
+    m_ebo.Unbind();
 
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glEnable(GL_DEPTH_TEST);
+}
+
+Vector3 GetColorFromHeight(float height)
+{
+    if (height > 0.3f)
+    {
+        return Vector3(1.0f, 1.0f, 1.0f); // Snow
+    }
+    else if (height > 0.1f)
+    {
+        return Vector3(0.3f, 0.3f, 0.35f); // Rock
+    }
+    else if (height > -0.05f)
+    {
+        return Vector3(0.1f, 0.4f, 0.15f); // Grass
+    }
+    else if (height > -0.1f)
+    {
+        return Vector3(0.6f, 0.5f, 0.4f); // Sand
+    }
+    else
+    {
+        return Vector3(0.1f, 0.1f, 0.3f); // Water
+    }
 }
 
 void TerrainApplication::Update()
@@ -79,7 +209,11 @@ void TerrainApplication::Render()
     glUseProgram(m_shaderProgram);
 
     // (todo) 01.1: Draw the grid
+    m_vao.Bind();
+    //glDrawArrays(GL_TRIANGLES, 0, 6 * m_gridX * m_gridY);
+    glDrawElements(GL_TRIANGLES, 6 * m_gridX * m_gridX, GL_UNSIGNED_INT, 0);
 
+    m_vao.Unbind();
 }
 
 void TerrainApplication::Cleanup()
