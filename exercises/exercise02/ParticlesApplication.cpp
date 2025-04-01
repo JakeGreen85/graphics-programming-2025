@@ -16,16 +16,20 @@ struct Particle
     float size;
     float birth;
     float duration;
+    Color color;
+    glm::vec2 velocity;
 };
 
 // List of attributes of the particle. Must match the structure above
-const std::array<VertexAttribute, 4> s_vertexAttributes =
+const std::array<VertexAttribute, 6> s_vertexAttributes =
 {
-    VertexAttribute(Data::Type::Float, 2), // position
+    VertexAttribute(Data::Type::Float, 2),  // position
     // (todo) 02.X: Add more vertex attributes
-    VertexAttribute(Data::Type::Float, 1), // size
-    VertexAttribute(Data::Type::Float, 1), // birth
-    VertexAttribute(Data::Type::Float, 1)  // duration
+    VertexAttribute(Data::Type::Float, 1),  // size
+    VertexAttribute(Data::Type::Float, 1),  // birth
+    VertexAttribute(Data::Type::Float, 1),  // duration
+    VertexAttribute(Data::Type::Float, 4),  // Color
+    VertexAttribute(Data::Type::Float, 2)
 };
 
 
@@ -75,9 +79,10 @@ void ParticlesApplication::Update()
         // (todo) 02.X: Compute new particle attributes here
         float size = RandomRange(10.0f, 30.0f);
         float duration = RandomRange(1.0f, 2.0f);
+        glm::vec2 vel = (mousePosition - m_mousePosition) / GetDeltaTime() * 0.5f;
 
 
-        EmitParticle(mousePosition, size, duration);
+        EmitParticle(mousePosition, size, duration, vel);
     }
 
     // save the mouse position (to compare next frame and obtain velocity)
@@ -96,7 +101,7 @@ void ParticlesApplication::Render()
     m_shaderProgram.SetUniform(m_currentTimeUniform, GetCurrentTime());
 
     // (todo) 02.6: Set Gravity uniform
-
+    m_shaderProgram.SetUniform(m_shaderProgram.GetUniformLocation("Gravity"), -9.81f);
 
     // Bind the particle system VAO
     m_vao.Bind();
@@ -153,15 +158,17 @@ void ParticlesApplication::InitializeShaders()
     }
 }
 
-void ParticlesApplication::EmitParticle(const glm::vec2& position, float size, float duration)
+void ParticlesApplication::EmitParticle(const glm::vec2& position, float size, float duration, glm::vec2 velocity)
 {
     // Initialize the particle
     Particle particle;
     particle.position = position;
+    // (todo) 02.X: Set the value for other attributes of the particle
     particle.size = size;
     particle.birth = GetCurrentTime();
     particle.duration = duration;
-    // (todo) 02.X: Set the value for other attributes of the particle
+    particle.color = RandomColor();
+    particle.velocity = velocity;
 
 
     // Get the index in the circular buffer

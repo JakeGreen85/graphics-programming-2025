@@ -146,7 +146,7 @@ ShaderProgram::Location ShaderProgram::GetUniformLocation(const char* name) cons
     Handle handle = GetHandle();
 
     // (todo) 02.1: Return the location in this shader program of the uniform with that name
-    return -1;
+    return glGetUniformLocation(handle, name);
 }
 
 
