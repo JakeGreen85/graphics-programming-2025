@@ -37,7 +37,7 @@ float flameShape(vec2 uv)
     // Inverted parabola shape
     float maxWidth = 0.6 * (1.0 - uv.y * uv.y);
     float r = abs(uv.x);
-    float body = smoothstep(maxWidth, maxWidth - 0.02, r);
+    float body = smoothstep(maxWidth, maxWidth - 0.07, r);
 
     // Fade top and bottom
     float bottomFade = smoothstep(-0.1, 0.0, uv.y);
@@ -46,21 +46,18 @@ float flameShape(vec2 uv)
     return body * bottomFade * topFade;
 }
 
-
-
-
 void main()
 {
     vec2 uv = fragUV;
     float t = Time * 0.5;
 
-    float sinFlicker = sin((uv.y + Time*0.2) * 10.0) * 0.03;
+    float sinFlicker = sin((uv.y + Time*0.5) * 10.0) * 0.03;
     float noiseFlicker = (noise(vec2(uv.y * 5.0, Time * 0.5)) - 0.5) * 0.1;
     uv.x += (sinFlicker + noiseFlicker) * uv.y;
 
     float intensity = 0.0;
-    vec2 fireUV = uv * vec2(1.0, 3.0);
-    fireUV.y -= t;
+    vec2 fireUV = uv * vec2(1.0, 1.0);
+    fireUV.y -= t * 1.2;
 
     for (int i = 0; i < 3; ++i)
     {
@@ -76,5 +73,11 @@ void main()
     float mask = flameShape(uv);
     vec3 color = base + vec3(1.0, 0.5, 0.0) * glow * 0.7;
 
-    fragColor = vec4(color, mask * intensity);
+    float alpha = mask * intensity;
+    alpha = pow(alpha, 1.5); // fades out faster toward the edge
+
+    vec3 finalColor = mix(vec3(0.0), color, alpha);
+
+    vec3 premultiplied = finalColor * alpha;
+    fragColor = vec4(premultiplied, alpha);
 }

@@ -30,16 +30,17 @@ void FireApplication::Update()
     GetMainWindow().GetDimensions(width, height);
     float aspect = static_cast<float>(width) / height;
     m_camera.SetPerspectiveProjectionMatrix(std::numbers::pi_v<float> / 3.0f, aspect, 0.1f, 10.0f);
-    m_camera.SetViewMatrix(glm::vec3(0, 0, 2.0f), glm::vec3(0, 0, 0));
+    m_camera.SetViewMatrix(glm::vec3(0, 0, 3.0f), glm::vec3(0, 0, 0));
     float currentTime = GetCurrentTime();
     if (currentTime - m_lastSparkTime >= m_sparkInterval)
     {
-        glm::vec2 pos = glm::vec2(RandomRange(-0.5f, 0.5f), RandomRange(-0.8f, 0.5f));
+        glm::vec2 pos = glm::vec2(RandomRange(-0.3f, 0.3f), RandomRange(-0.5f, 0.3f));
         float size = RandomRange(3.0f, 7.0f);
         float dur = RandomRange(0.8f, 1.5f);
         Color c(1.0f, RandomRange(0.3f, 0.6f), 0.1f);
         glm::vec2 vel(RandomRange(-0.1f, 0.1f), RandomRange(0.5f, 1.5f));
         EmitSpark(pos, size, dur, c, vel);
+
         m_lastSparkTime = currentTime; // reset timer
     }
 }
@@ -60,7 +61,7 @@ void FireApplication::Render()
 
     m_sparkShader.Use();
     m_sparkShader.SetUniform(m_sparkTimeUniform, GetCurrentTime());
-    m_sparkShader.SetUniform(m_sparkGravityUniform, -3.5f);
+    m_sparkShader.SetUniform(m_sparkGravityUniform, -1.0f);
 
     m_sparkVAO.Bind();
     glDrawArrays(GL_POINTS, 0, std::min(m_sparkCount, m_sparkCapacity));
