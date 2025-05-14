@@ -24,10 +24,9 @@ float noise(vec2 p)
 
 float flameShape(vec2 uv)
 {
-    uv.x *= 2;
 
     // Center the UV at the bottom middle
-    uv -= vec2(1, 0.0);
+    uv -= vec2(0.5, 0.0);
 
 
     // Vertical scale pulsing over time
@@ -37,10 +36,11 @@ float flameShape(vec2 uv)
     // Inverted parabola shape
     float maxWidth = 0.6 * (1.0 - uv.y * uv.y);
     float r = abs(uv.x);
-    float body = smoothstep(maxWidth, maxWidth - 0.07, r);
+    float body = smoothstep(maxWidth, maxWidth - 0.5, r);
 
     // Fade top and bottom
-    float bottomFade = smoothstep(-0.1, 0.0, uv.y);
+    float bottomFade = smoothstep(-0.1, 0.1, uv.y);
+
     float topFade = 1.0 - smoothstep(1.0, 1.1, uv.y);
 
     return body * bottomFade * topFade;
