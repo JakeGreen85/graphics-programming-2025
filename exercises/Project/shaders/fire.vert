@@ -10,6 +10,9 @@ out vec2 fragUV;
 
 void main()
 {
+    // Forward UV coordinates to fragment shader
     fragUV = inUV;
+
+    // Compute final clip-space position by applying world, view, and projection transforms
     gl_Position = ViewProjMatrix * WorldMatrix * vec4(inPosition, 1.0);
 }

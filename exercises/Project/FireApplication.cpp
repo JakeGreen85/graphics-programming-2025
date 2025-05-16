@@ -16,15 +16,24 @@ FireApplication::FireApplication()
 void FireApplication::Initialize()
 {
     Application::Initialize();
-    InitializeSparkSystem();
+    InitializeParticleSystem();
     InitializeGeometry();
     InitializeShaders();
-    GetDevice().EnableFeature(GL_DEPTH_TEST);
 }
 
 void FireApplication::Update()
 {
     Application::Update();
+
+    // Calculates frames per second
+    m_frameCount++;
+    float now = GetCurrentTime();
+    if (now - m_lastFpsTime >= 1.0f)
+    {
+        std::cout << "FPS: " << m_frameCount << "\n";
+        m_frameCount = 0;
+        m_lastFpsTime = now;
+    }
 
     int width, height;
     GetMainWindow().GetDimensions(width, height);
@@ -32,21 +41,32 @@ void FireApplication::Update()
     m_camera.SetPerspectiveProjectionMatrix(std::numbers::pi_v<float> / 3.0f, aspect, 0.1f, 10.0f);
     m_camera.SetViewMatrix(glm::vec3(0, 0, 2.0f), glm::vec3(0, 0, 0));
     float currentTime = GetCurrentTime();
+
+    // Emit spark every 0.2 seconds
     if (currentTime - m_lastSparkTime >= m_sparkInterval)
     {
         glm::vec2 pos = glm::vec2(RandomRange(-0.3f, 0.3f), RandomRange(-0.7f, 0.0f));
         float size = RandomRange(3.0f, 7.0f);
-        float dur = RandomRange(0.8f, 1.5f);
+        float dur = RandomRange(0.5f, 1.0f);
         Color c(1.0f, RandomRange(0.3f, 0.6f), 0.1f);
         glm::vec2 vel(RandomRange(-0.1f, 0.1f), RandomRange(0.5f, 1.5f));
-        EmitSpark(pos, size, dur, c, vel);
+        EmitParticle(pos, size, dur, c, vel);
 
-        m_lastSparkTime = currentTime; // reset timer
+        m_lastSparkTime = currentTime; // Reset timer
     }
+
+    // Emit smoke particle every frame
+    glm::vec2 smokePos = glm::vec2(RandomRange(-0.3f, 0.3f), -0.7f);
+    float smokeSize = RandomRange(90.0f, 100.0f);
+    float smokeDuration = RandomRange(8.0f, 10.0f);
+    Color smokeColor = Color(0.1f, 0.1f, 0.1f, 0.1f);
+    glm::vec2 smokeVelocity = glm::vec2(RandomRange(-0.02f, 0.02f), RandomRange(0.3f, 0.5f));
+    EmitParticle(smokePos, smokeSize, smokeDuration, smokeColor, smokeVelocity);
 }
 
 void FireApplication::Render()
 {
+    // Clear screen to black
     GetDevice().Clear(true, Color(0.0f, 0.0f, 0.0f), true, 1.0f);
     m_shaderProgram.Use();
 
@@ -54,9 +74,7 @@ void FireApplication::Render()
     m_shaderProgram.SetUniform(m_viewProjUniform, m_camera.GetViewProjectionMatrix());
     m_shaderProgram.SetUniform(m_worldMatrixUniform, glm::mat4(1.0f));
 
-    GetDevice().EnableFeature(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-
+    // Draw flame quad
     m_quad.DrawSubmesh(0);
 
     m_sparkShader.Use();
@@ -64,6 +82,8 @@ void FireApplication::Render()
     m_sparkShader.SetUniform(m_sparkGravityUniform, -1.0f);
 
     m_sparkVAO.Bind();
+
+    // Draw particles
     glDrawArrays(GL_POINTS, 0, std::min(m_sparkCount, m_sparkCapacity));
 
     Application::Render();
@@ -90,7 +110,7 @@ void FireApplication::InitializeGeometry()
     );
 }
 
-void FireApplication::InitializeSparkSystem()
+void FireApplication::InitializeParticleSystem()
 {
     m_sparkVBO.Bind();
     m_sparkVBO.AllocateData(m_sparkCapacity * sizeof(SparkParticle), BufferObject::Usage::DynamicDraw);
@@ -134,7 +154,7 @@ void FireApplication::InitializeSparkSystem()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 }
 
-void FireApplication::EmitSpark(const glm::vec2& position, float size, float duration, const Color& color, const glm::vec2& velocity)
+void FireApplication::EmitParticle(const glm::vec2& position, float size, float duration, const Color& color, const glm::vec2& velocity)
 {
     SparkParticle p{ position, size, GetCurrentTime(), duration, color, velocity };
 
@@ -183,6 +203,8 @@ void FireApplication::LoadAndCompileShader(Shader& shader, const char* path)
         std::cerr << "Error compiling " << path << ":\n" << errors.data() << "\n";
     }
 }
+
+// Helper functions for random number generation
 
 float FireApplication::Random01()
 {

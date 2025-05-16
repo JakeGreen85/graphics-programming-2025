@@ -42,8 +42,8 @@ private:
 
     Camera m_camera;
 
-    void InitializeSparkSystem();
-    void EmitSpark(const glm::vec2& pos, float size, float duration, const Color& color, const glm::vec2& velocity);
+    void InitializeParticleSystem();
+    void EmitParticle(const glm::vec2& pos, float size, float duration, const Color& color, const glm::vec2& velocity);
     // Helper methods for random values
     static float Random01();
     static float RandomRange(float from, float to);
@@ -61,4 +61,6 @@ private:
     unsigned int m_sparkCapacity = 1024;
     float m_lastSparkTime = 0.0f;
     float m_sparkInterval = 0.2f;
+    float m_lastFpsTime = 0.0f;
+    int m_frameCount = 0;
 };
